@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Newton Interpolation · Smart Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ══════════════════════════════════════════════════
+   ROOT VARIABLES
+══════════════════════════════════════════════════ */
+:root {
+  --bg:         #0B0F1A;
+  --surface:    #111827;
+  --surface2:   #1A2235;
+  --surface3:   #1F2D42;
+  --border:     rgba(255,255,255,0.08);
+  --border2:    rgba(255,255,255,0.14);
+  --primary:    #3B82F6;
+  --primary-d:  #2563EB;
+  --teal:       #14B8A6;
+  --amber:      #F59E0B;
+  --amber-d:    #D97706;
+  --green:      #10B981;
+  --red:        #EF4444;
+  --text:       #F1F5F9;
+  --text-2:     #94A3B8;
+  --text-3:     #64748B;
+  --radius:     16px;
+  --radius-sm:  10px;
+  --shadow:     0 8px 32px rgba(0,0,0,0.4);
+  --shadow-lg:  0 20px 60px rgba(0,0,0,0.6);
+  --fwd-color:  #3B82F6;
+  --bwd-color:  #14B8A6;
+  --poly-color: #A855F7;
+}
+
+/* ══════════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Background grid pattern ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ══════════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════════ */
+.page-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 1.5rem 4rem;
+}
+
+/* ══════════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════════ */
+header {
+  padding: 2.5rem 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2.5rem;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.brand-icon {
+  width: 48px; height: 48px;
+  background: linear-gradient(135deg, var(--primary), var(--teal));
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 0 24px rgba(59,130,246,0.35);
+}
+.brand-text h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+  line-height: 1.2;
+}
+.brand-text p {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.header-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.hbadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 30px;
+  border: 1px solid;
+}
+.hbadge.fwd  { border-color: rgba(59,130,246,0.4);  color: var(--primary); background: rgba(59,130,246,0.1); }
+.hbadge.bwd  { border-color: rgba(20,184,166,0.4);  color: var(--teal);    background: rgba(20,184,166,0.1); }
+.hbadge.auto { border-color: rgba(245,158,11,0.4);  color: var(--amber);   background: rgba(245,158,11,0.1); }
+
+/* ══════════════════════════════════════════════════
+   TWO-COLUMN GRID
+══════════════════════════════════════════════════ */
+.main-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════
+   CARD
+══════════════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.6rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+.card-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+.card-icon.blue   { background: rgba(59,130,246,0.15);  color: var(--primary); }
+.card-icon.teal   { background: rgba(20,184,166,0.15);  color: var(--teal);    }
+.card-icon.amber  { background: rgba(245,158,11,0.15);  color: var(--amber);   }
+.card-icon.purple { background: rgba(168,85,247,0.15);  color: #A855F7;        }
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.0rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ══════════════════════════════════════════════════
+   FORM ELEMENTS
+══════════════════════════════════════════════════ */
+.field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.45rem;
+  display: block;
+}
+input[type="text"], input[type="number"] {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1rem;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 0.85rem;
+}
+input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+input[type="text"]::placeholder { color: var(--text-3); }
+input[type="number"] { appearance: none; -moz-appearance: textfield; }
+
+/* ══════════════════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.2rem;
+  border-radius: var(--radius-sm);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-d));
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(59,130,246,0.35);
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 0.95rem;
+}
+.btn-primary:hover { box-shadow: 0 6px 24px rgba(59,130,246,0.5); }
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-2);
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-ghost {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  padding: 0.45rem 0.9rem;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+.btn-amber {
+  background: linear-gradient(135deg, var(--amber), var(--amber-d));
+  color: #0B0F1A;
+}
+.btn-green {
+  background: rgba(16,185,129,0.15);
+  border: 1px solid rgba(16,185,129,0.3);
+  color: var(--green);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.85rem;
+}
+.btn-green:hover { background: rgba(16,185,129,0.25); }
+
+.btn-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+/* ══════════════════════════════════════════════════
+   SAMPLE SELECTOR
+══════════════════════════════════════════════════ */
+select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1rem;
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.86rem;
+  outline: none;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  transition: border-color 0.2s;
+}
+select:focus { border-color: var(--primary); }
+.sample-desc {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  padding: 0.5rem 0.75rem;
+  background: var(--surface2);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════════════
+   FORMULA REFERENCE
+══════════════════════════════════════════════════ */
+.formula-block {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 1rem 1.2rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 2;
+  margin-bottom: 0.75rem;
+}
+.formula-block.teal { border-left-color: var(--teal); }
+.formula-block b { color: var(--primary); }
+.formula-block.teal b { color: var(--teal); }
+
+/* ══════════════════════════════════════════════════
+   ALERT / INFO BOXES
+══════════════════════════════════════════════════ */
+.alert {
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1.1rem;
+  font-size: 0.83rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  display: none;
+}
+.alert.visible { display: block; }
+.alert-error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #FCA5A5;
+}
+.alert-warn {
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  color: #FCD34D;
+}
+.alert-info {
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.3);
+  color: #93C5FD;
+}
+
+/* ══════════════════════════════════════════════════
+   METHOD BADGE
+══════════════════════════════════════════════════ */
+.method-hero {
+  border-radius: var(--radius);
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  display: none;
+}
+.method-hero.visible { display: block; }
+.method-hero.forward {
+  background: linear-gradient(135deg, rgba(37,99,235,0.25), rgba(29,78,216,0.15));
+  border: 1px solid rgba(59,130,246,0.3);
+}
+.method-hero.backward {
+  background: linear-gradient(135deg, rgba(13,148,136,0.25), rgba(15,118,110,0.15));
+  border: 1px solid rgba(20,184,166,0.3);
+}
+.method-hero.polynomial {
+  background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(109,40,217,0.15));
+  border: 1px solid rgba(168,85,247,0.3);
+}
+.method-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+.method-hero.forward  .method-tag { color: var(--primary); }
+.method-hero.backward .method-tag { color: var(--teal); }
+.method-hero.polynomial .method-tag { color: #A855F7; }
+.method-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.method-reason {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════════
+   RESULT HERO
+══════════════════════════════════════════════════ */
+.result-hero {
+  border-radius: var(--radius);
+  padding: 1.8rem 2rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  display: none;
+}
+.result-hero.visible { display: block; }
+.result-hero.forward  {
+  background: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%);
+  box-shadow: 0 8px 32px rgba(29,78,216,0.4);
+}
+.result-hero.backward {
+  background: linear-gradient(135deg, #0F4C44 0%, #0D9488 100%);
+  box-shadow: 0 8px 32px rgba(13,148,136,0.4);
+}
+.result-hero::before {
+  content: attr(data-symbol);
+  position: absolute;
+  right: 1.5rem; top: 0;
+  font-size: 9rem;
+  color: rgba(255,255,255,0.05);
+  font-family: 'Playfair Display', serif;
+  line-height: 1;
+  pointer-events: none;
+}
+.result-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 0.4rem;
+}
+.result-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2.8rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+.result-meta {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 0.8rem;
+}
+.result-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+/* ══════════════════════════════════════════════════
+   KV CHIPS ROW
+══════════════════════════════════════════════════ */
+.kv-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.kv-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 0.35rem 0.85rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+.kv-chip b { color: var(--amber); }
+
+/* ══════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════ */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.2rem;
+  overflow-x: auto;
+}
+.tab-btn {
+  padding: 0.55rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--text-2); }
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.tab-btn.active.teal-tab {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ══════════════════════════════════════════════════
+   TABLES
+══════════════════════════════════════════════════ */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+}
+thead th {
+  background: var(--surface3);
+  color: var(--text-2);
+  padding: 0.65rem 1rem;
+  text-align: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border2);
+}
+tbody td {
+  padding: 0.6rem 1rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+tbody td:first-child { color: var(--amber); font-weight: 600; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(255,255,255,0.02); }
+.td-highlight { color: var(--primary) !important; font-weight: 700 !important; }
+.td-highlight-teal { color: var(--teal) !important; font-weight: 700 !important; }
+.td-null { color: var(--text-3) !important; font-weight: 400 !important; }
+.td-key-row td { background: rgba(59,130,246,0.06) !important; }
+.td-key-row-teal td { background: rgba(20,184,166,0.06) !important; }
+
+/* ══════════════════════════════════════════════════
+   STEPS
+══════════════════════════════════════════════════ */
+.step-list { display: flex; flex-direction: column; gap: 0; }
+.step-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.step-item:last-child { border-bottom: none; }
+.step-num {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text-3);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
+}
+.step-num.active-num {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.step-body { flex: 1; min-width: 0; }
+.step-sym {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.2rem;
+}
+.step-math {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.7;
+  word-break: break-all;
+}
+.step-sum {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--teal);
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+.step-sum.fwd-sum { color: var(--primary); }
+
+/* ══════════════════════════════════════════════════
+   POLYNOMIAL DISPLAY
+══════════════════════════════════════════════════ */
+.poly-box {
+  background: var(--surface2);
+  border: 1px solid rgba(168,85,247,0.3);
+  border-radius: var(--radius-sm);
+  padding: 1.2rem 1.4rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.83rem;
+  color: #C4B5FD;
+  line-height: 2;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 0.85rem;
+}
+.poly-note {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  line-height: 1.6;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface2);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}
+
+/* ══════════════════════════════════════════════════
+   FINAL ANSWER BOX
+══════════════════════════════════════════════════ */
+.final-box {
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.4rem;
+  margin-top: 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+}
+.final-box.fwd {
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.3);
+  color: var(--primary);
+}
+.final-box.bwd {
+  background: rgba(20,184,166,0.1);
+  border: 1px solid rgba(20,184,166,0.3);
+  color: var(--teal);
+}
+
+/* ══════════════════════════════════════════════════
+   PLACEHOLDER
+══════════════════════════════════════════════════ */
+.placeholder-card {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-3);
+}
+.placeholder-icon { font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.5; }
+.placeholder-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  color: var(--text-2);
+  margin-bottom: 0.5rem;
+}
+.placeholder-text { font-size: 0.85rem; line-height: 1.7; }
+
+/* ══════════════════════════════════════════════════
+   LOADING SPINNER
+══════════════════════════════════════════════════ */
+.spinner {
+  display: none;
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══════════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════════ */
+footer {
+  text-align: center;
+  padding: 2rem 0 0;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+  font-size: 0.78rem;
+  color: var(--text-3);
+  line-height: 2;
+}
+footer span { color: var(--text-2); }
+
+/* ══════════════════════════════════════════════════
+   COPY TOAST
+══════════════════════════════════════════════════ */
+#copy-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: var(--green);
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.25s;
+  z-index: 9999;
+  pointer-events: none;
+}
+#copy-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ══════════════════════════════════════════════════
+   SECTION DIVIDER
+══════════════════════════════════════════════════ */
+.section-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 1rem 0;
+}
+
+/* ══════════════════════════════════════════════════
+   DELTA TABLE
+══════════════════════════════════════════════════ */
+.delta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.delta-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  text-align: center;
+}
+.delta-chip .sym {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  margin-bottom: 0.2rem;
+}
+.delta-chip .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+.delta-chip .val.teal { color: var(--teal); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE WRAPPER
+════════════════════════════════════════════════════════════ -->
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">∂</div>
+      <div class="brand-text">
+        <h1>Newton Interpolation</h1>
+        <p>Smart Equal-Interval Calculator · Numerical Methods</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="hbadge fwd">Forward Δ</span>
+      <span class="hbadge bwd">Backward ∇</span>
+      <span class="hbadge auto">Auto-Select</span>
+    </div>
+  </header>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- ═══════════════════════════════════════
+         LEFT — INPUT PANEL
+    ═══════════════════════════════════════ -->
+    <div class="left-panel">
+
+      <!-- Sample Data Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon amber">💾</div>
+          <span class="card-title">Load Sample Dataset</span>
+        </div>
+        <select id="sample-select">
+          <option value="">— Choose a preset —</option>
+          {% for name, data in samples.items() %}
+          <option value="{{ name }}"
+            data-x="{{ data.x }}"
+            data-y="{{ data.y }}"
+            data-target="{{ data.target if data.target is not none else '' }}"
+            data-desc="{{ data.description }}">
+            {{ name }}
+          </option>
+          {% endfor %}
+        </select>
+        <div class="sample-desc" id="sample-desc">Select a preset to auto-fill the form below.</div>
+        <button class="btn btn-amber" onclick="loadSample()" style="width:100%">
+          ⚡ Use Sample Data
+        </button>
+      </div>
+
+      <!-- Data Input Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon blue">📊</div>
+          <span class="card-title">Data Input</span>
+        </div>
+
+        <label class="field-label">x values (comma-separated)</label>
+        <input type="text" id="x-input"
+          placeholder="e.g.  1.0, 1.25, 1.50, 1.75, 2.00"
+          value="1.0, 1.25, 1.50, 1.75, 2.00"/>
+
+        <label class="field-label">y = f(x) values (comma-separated)</label>
+        <input type="text" id="y-input"
+          placeholder="e.g.  0.0000, 0.2231, 0.4055, 0.5596, 0.6931"
+          value="0.0000, 0.2231, 0.4055, 0.5596, 0.6931"/>
+
+        <label class="field-label">
+          Target x &nbsp;
+          <span style="font-size:0.7rem; color:var(--text-3); text-transform:none; letter-spacing:0">
+            (leave blank → generate polynomial P(x))
+          </span>
+        </label>
+        <input type="text" id="target-input"
+          placeholder="e.g.  1.35  — or leave blank for polynomial"
+          value="1.35"/>
+
+        <div id="error-alert" class="alert alert-error"></div>
+        <div id="warn-alert"  class="alert alert-warn"></div>
+
+        <button class="btn btn-primary" onclick="calculate()" id="calc-btn">
+          <span class="spinner" id="spinner"></span>
+          <span id="calc-text">🔢 Calculate</span>
+        </button>
+
+        <div class="btn-row" style="margin-top:0.75rem">
+          <button class="btn btn-outline" onclick="resetAll()" style="flex:1">
+            🔄 Reset
+          </button>
+          <button class="btn btn-ghost" onclick="clearResult()" style="flex:1">
+            ✕ Clear Results
+          </button>
+        </div>
+      </div>
+
+      <!-- Formula Reference Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon blue">📖</div>
+          <span class="card-title">Formula Reference</span>
+        </div>
+        <div class="formula-block">
+<b>Newton Forward (u = (x−x₀)/h)</b>
+
+y(x) = y₀ + u·Δy₀
+     + [u(u−1)/2!]·Δ²y₀
+     + [u(u−1)(u−2)/3!]·Δ³y₀
+     + ···
+        </div>
+        <div class="formula-block teal">
+<b>Newton Backward (s = (x−xₙ)/h)</b>
+
+y(x) = yₙ + s·∇yₙ
+     + [s(s+1)/2!]·∇²yₙ
+     + [s(s+1)(s+2)/3!]·∇³yₙ
+     + ···
+        </div>
+        <div style="font-size:0.78rem; color:var(--text-3); line-height:1.7; margin-top:0.5rem">
+          Auto-selection: target x closer to start → Forward &nbsp;|&nbsp; closer to end → Backward
+        </div>
+      </div>
+
+    </div><!-- /left-panel -->
+
+    <!-- ═══════════════════════════════════════
+         RIGHT — RESULTS PANEL
+    ═══════════════════════════════════════ -->
+    <div class="right-panel" id="right-panel">
+
+      <!-- Placeholder shown before first calculation -->
+      <div class="card placeholder-card" id="placeholder">
+        <div class="placeholder-icon">∫</div>
+        <div class="placeholder-title">Ready to Interpolate</div>
+        <div class="placeholder-text">
+          Enter x and y values, optionally a target x, then click Calculate.<br/>
+          The system will automatically choose Forward or Backward interpolation<br/>
+          — or generate the polynomial P(x) if no target x is given.
+        </div>
+      </div>
+
+      <!-- ── METHOD HERO ── -->
+      <div class="method-hero" id="method-hero">
+        <div class="method-tag" id="method-tag"></div>
+        <div class="method-name" id="method-name"></div>
+        <div class="method-reason" id="method-reason"></div>
+      </div>
+
+      <!-- ── RESULT HERO (interpolation) ── -->
+      <div class="result-hero" id="result-hero" data-symbol="≈">
+        <div class="result-label">Interpolated Value</div>
+        <div class="result-value" id="result-value">—</div>
+        <div class="result-meta" id="result-meta"></div>
+        <div class="result-actions">
+          <button class="btn btn-green" onclick="copyResult()" id="copy-btn">📋 Copy Result</button>
+        </div>
+      </div>
+
+      <!-- ── POLYNOMIAL HERO (no-target mode) ── -->
+      <div id="poly-hero" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon purple">P</div>
+            <span class="card-title">Newton Polynomial P(x)</span>
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-3); margin-bottom:0.75rem">
+            No target x was provided. Both polynomial forms are shown below.
+          </div>
+
+          <div style="font-size:0.75rem; font-weight:700; color:var(--primary); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.4rem">Forward Form (using Δ differences)</div>
+          <div class="poly-box" id="fwd-poly-box"></div>
+
+          <div style="font-size:0.75rem; font-weight:700; color:var(--teal); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.4rem; margin-top:0.75rem">Backward Form (using ∇ differences)</div>
+          <div class="poly-box" id="bwd-poly-box" style="border-color:rgba(20,184,166,0.3); color:#5EEAD4"></div>
+
+          <div class="poly-note" id="poly-note"></div>
+        </div>
+      </div>
+
+      <!-- ── PARAMETERS CARD ── -->
+      <div class="card" id="params-card" style="display:none">
+        <div class="card-header">
+          <div class="card-icon amber">⚙️</div>
+          <span class="card-title">Parameters</span>
+        </div>
+        <div class="kv-row" id="params-kv"></div>
+        <div class="formula-block" id="var-formula" style="margin:0"></div>
+      </div>
+
+      <!-- ── MAIN OUTPUT TABS ── -->
+      <div class="card" id="output-card" style="display:none">
+        <div class="tabs" id="output-tabs">
+          <button class="tab-btn active" onclick="switchTab('input-table', this)">📋 Input Data</button>
+          <button class="tab-btn" onclick="switchTab('fwd-diff-tab', this)">Δ Forward Table</button>
+          <button class="tab-btn teal-tab" onclick="switchTab('bwd-diff-tab', this)">∇ Backward Table</button>
+          <button class="tab-btn" onclick="switchTab('steps-tab', this)">🔢 Step-by-Step</button>
+          <button class="tab-btn" onclick="switchTab('delta-tab', this)">📌 Δ∇ Values</button>
+        </div>
+
+        <!-- Tab: Input Table -->
+        <div class="tab-panel active" id="input-table">
+          <div class="table-wrap">
+            <table id="input-tbl">
+              <thead><tr><th>i</th><th>xᵢ</th><th>yᵢ = f(xᵢ)</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab: Forward Difference Table -->
+        <div class="tab-panel" id="fwd-diff-tab">
+          <div style="font-size:0.78rem; color:var(--text-3); margin-bottom:0.75rem; line-height:1.6">
+            First row values (highlighted in blue) are used in the Newton Forward formula.
+          </div>
+          <div class="table-wrap">
+            <table id="fwd-diff-tbl">
+              <thead><tr></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab: Backward Difference Table -->
+        <div class="tab-panel" id="bwd-diff-tab">
+          <div style="font-size:0.78rem; color:var(--text-3); margin-bottom:0.75rem; line-height:1.6">
+            Last row values (highlighted in teal) are used in the Newton Backward formula.
+          </div>
+          <div class="table-wrap">
+            <table id="bwd-diff-tbl">
+              <thead><tr></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab: Step-by-step -->
+        <div class="tab-panel" id="steps-tab">
+          <div class="step-list" id="step-list">
+            <div style="color:var(--text-3); font-size:0.85rem; padding:1rem 0">
+              Perform a calculation first.
+            </div>
+          </div>
+          <div class="final-box" id="final-box" style="display:none"></div>
+        </div>
+
+        <!-- Tab: Delta values -->
+        <div class="tab-panel" id="delta-tab">
+          <div style="font-size:0.78rem; font-weight:700; color:var(--primary); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.6rem">Forward Differences (Δ) — first row</div>
+          <div class="delta-grid" id="delta-grid-fwd"></div>
+          <div class="section-sep" style="margin:1rem 0"></div>
+          <div style="font-size:0.78rem; font-weight:700; color:var(--teal); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.6rem">Backward Differences (∇) — last row</div>
+          <div class="delta-grid" id="delta-grid-bwd"></div>
+        </div>
+
+      </div><!-- /output-card -->
+
+    </div><!-- /right-panel -->
+  </div><!-- /main-grid -->
+
+  <!-- FOOTER -->
+  <footer>
+    <span>Newton Interpolation Smart Calculator</span> &nbsp;·&nbsp;
+    Equal-Interval Numerical Methods &nbsp;·&nbsp;
+    Auto-selects Forward or Backward based on target x proximity<br/>
+    Built with Flask · Python · Vanilla JS
+  </footer>
+
+</div><!-- /page-wrap -->
+
+<!-- Copy Toast -->
+<div id="copy-toast">✓ Copied to clipboard!</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+/* ── stored result for copy ── */
+let _lastResult = null;
+
+/* ══════════════════════════════════════════════════
+   SAMPLE LOADER
+══════════════════════════════════════════════════ */
+document.getElementById('sample-select').addEventListener('change', function () {
+  const opt = this.options[this.selectedIndex];
+  const desc = opt.dataset.desc || 'Select a preset to auto-fill the form.';
+  document.getElementById('sample-desc').textContent = desc;
+});
+
+function loadSample() {
+  const sel = document.getElementById('sample-select');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt.value) { showError('Please select a sample dataset first.'); return; }
+  document.getElementById('x-input').value      = opt.dataset.x;
+  document.getElementById('y-input').value      = opt.dataset.y;
+  document.getElementById('target-input').value = opt.dataset.target;
+  hideError();
+  clearResult();
+}
+
+/* ══════════════════════════════════════════════════
+   RESET
+══════════════════════════════════════════════════ */
+function resetAll() {
+  document.getElementById('x-input').value      = '';
+  document.getElementById('y-input').value      = '';
+  document.getElementById('target-input').value = '';
+  document.getElementById('sample-select').selectedIndex = 0;
+  document.getElementById('sample-desc').textContent = 'Select a preset to auto-fill the form below.';
+  hideError();
+  clearResult();
+}
+
+function clearResult() {
+  document.getElementById('placeholder').style.display = '';
+  hide('method-hero');
+  hide('result-hero');
+  hide('poly-hero');
+  hide('params-card');
+  hide('output-card');
+  _lastResult = null;
+}
+
+/* ══════════════════════════════════════════════════
+   CALCULATE
+══════════════════════════════════════════════════ */
+async function calculate() {
+  hideError();
+  setLoading(true);
+
+  const x_raw    = document.getElementById('x-input').value.trim();
+  const y_raw    = document.getElementById('y-input').value.trim();
+  const target_x = document.getElementById('target-input').value.trim();
+
+  if (!x_raw) { showError('x values field is empty.'); setLoading(false); return; }
+  if (!y_raw) { showError('y values field is empty.'); setLoading(false); return; }
+
+  try {
+    const resp = await fetch('/calculate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ x_raw, y_raw, target_x }),
+    });
+    const data = await resp.json();
+
+    if (!resp.ok || data.error) {
+      showError(data.error || 'Unexpected server error.');
+      setLoading(false);
+      return;
+    }
+
+    renderResult(data);
+  } catch (e) {
+    showError('Network error — make sure the server is running.');
+  }
+
+  setLoading(false);
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER RESULTS
+══════════════════════════════════════════════════ */
+function renderResult(d) {
+  document.getElementById('placeholder').style.display = 'none';
+
+  // ── Extrapolation warning ──
+  if (d.selection && d.selection.warning) {
+    showWarn(d.selection.warning);
+  } else {
+    hideWarn();
+  }
+
+  // ── Method Hero ──
+  const mh   = document.getElementById('method-hero');
+  const mtag = document.getElementById('method-tag');
+  const mname = document.getElementById('method-name');
+  const mreason = document.getElementById('method-reason');
+
+  if (d.mode === 'polynomial') {
+    mh.className = 'method-hero visible polynomial';
+    mtag.textContent   = 'Mode: Polynomial Generation';
+    mname.textContent  = 'Newton Polynomial P(x)';
+    mreason.textContent = 'No target x was provided. Generating the Newton interpolation polynomial in both Forward and Backward forms.';
+  } else {
+    mh.className = `method-hero visible ${d.mode}`;
+    if (d.mode === 'forward') {
+      mtag.textContent  = 'Auto-Selected Method';
+      mname.textContent = 'Newton Forward Interpolation';
+    } else {
+      mtag.textContent  = 'Auto-Selected Method';
+      mname.textContent = 'Newton Backward Interpolation';
+    }
+    mreason.textContent = d.selection ? d.selection.reason : '';
+  }
+
+  // ── Result / Polynomial Hero ──
+  if (d.mode === 'polynomial') {
+    hide('result-hero');
+    show('poly-hero');
+    document.getElementById('fwd-poly-box').textContent = d.polynomial.forward_polynomial;
+    document.getElementById('bwd-poly-box').textContent = d.polynomial.backward_polynomial;
+    document.getElementById('poly-note').textContent    = d.polynomial.note;
+  } else {
+    hide('poly-hero');
+    const rh = document.getElementById('result-hero');
+    rh.className = `result-hero visible ${d.mode}`;
+    _lastResult  = d.result;
+    document.getElementById('result-value').textContent = fmt(d.result, 8);
+
+    const calc = d.calc;
+    if (d.mode === 'forward') {
+      document.getElementById('result-meta').textContent =
+        `x₀ = ${calc.x0} · h = ${calc.h} · u = ${fmt(calc.u, 6)}`;
+    } else {
+      document.getElementById('result-meta').textContent =
+        `xₙ = ${calc.xn} · h = ${calc.h} · s = ${fmt(calc.s, 6)}`;
+    }
+  }
+
+  // ── Parameters Card ──
+  if (d.mode !== 'polynomial') {
+    show('params-card');
+    const calc = d.calc;
+    const kvs  = d.mode === 'forward'
+      ? [
+          ['x₀', calc.x0],  ['y₀', calc.y0],
+          ['h',  calc.h],    ['u',  fmt(calc.u, 6)],
+          ['n',  d.n + ' pts'],
+        ]
+      : [
+          ['xₙ', calc.xn],  ['yₙ', calc.yn],
+          ['h',  calc.h],    ['s',  fmt(calc.s, 6)],
+          ['n',  d.n + ' pts'],
+        ];
+
+    document.getElementById('params-kv').innerHTML = kvs
+      .map(([k, v]) => `<div class="kv-chip"><b>${k}</b> = ${v}</div>`)
+      .join('');
+    document.getElementById('var-formula').textContent = calc.var_formula;
+  } else {
+    hide('params-card');
+  }
+
+  // ── Output Card ──
+  show('output-card');
+
+  // Input table
+  buildInputTable(d.sorted_x, d.sorted_y);
+
+  // Difference tables
+  buildDiffTable('fwd-diff-tbl', d.sorted_x, d.fwd_table, d.n, 'forward');
+  buildDiffTable('bwd-diff-tbl', d.sorted_x, d.bwd_table, d.n, 'backward');
+
+  // Steps
+  if (d.mode !== 'polynomial') buildSteps(d);
+  else {
+    document.getElementById('step-list').innerHTML =
+      '<div style="color:var(--text-3);font-size:0.85rem;padding:1rem 0">Steps are shown when a target x is provided.</div>';
+    hide('final-box');
+  }
+
+  // Delta chips
+  buildDeltaChips(d);
+}
+
+/* ── Input table ── */
+function buildInputTable(xs, ys) {
+  const tbody = document.querySelector('#input-tbl tbody');
+  tbody.innerHTML = xs.map((x, i) =>
+    `<tr><td>${i}</td><td>${fmt(x, 4)}</td><td>${fmt(ys[i], 6)}</td></tr>`
+  ).join('');
+}
+
+/* ── Difference table ── */
+function buildDiffTable(tblId, xs, table, n, dir) {
+  const tbl   = document.getElementById(tblId);
+  const thead = tbl.querySelector('thead tr');
+  const tbody = tbl.querySelector('tbody');
+  if (!thead || !tbody) return;
+
+  // Headers
+  const sup = k => '⁰¹²³⁴⁵⁶⁷⁸⁹'.split('').reduce((s, c, i) =>
+    s.replace(new RegExp(i, 'g'), c), String(k));
+  const sym   = dir === 'forward' ? 'Δ' : '∇';
+  const heads = ['xᵢ', 'yᵢ',
+    ...Array.from({length: n - 1}, (_, k) => `${sym}${sup(k + 1)}y`)];
+  thead.innerHTML = heads.map(h => `<th>${h}</th>`).join('');
+
+  // Rows
+  tbody.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const tr  = document.createElement('tr');
+    const isKey = dir === 'forward' ? i === 0 : i === n - 1;
+    if (isKey) tr.classList.add(dir === 'forward' ? 'td-key-row' : 'td-key-row-teal');
+
+    // x cell
+    const xtd = document.createElement('td');
+    xtd.textContent = fmt(xs[i], 4);
+    tr.appendChild(xtd);
+
+    // y columns
+    for (let j = 0; j < n; j++) {
+      const td  = document.createElement('td');
+      const val = table[i][j];
+      if (val === null || val === undefined) {
+        td.textContent = '—';
+        td.classList.add('td-null');
+      } else {
+        td.textContent = fmt(val, 6);
+        if (isKey) {
+          td.classList.add(dir === 'forward' ? 'td-highlight' : 'td-highlight-teal');
+        }
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+/* ── Steps ── */
+function buildSteps(d) {
+  const list = document.getElementById('step-list');
+  const fbox = document.getElementById('final-box');
+  const steps = d.calc.steps;
+  const isFwd = d.mode === 'forward';
+  const varLbl = d.calc.var_label;
+
+  list.innerHTML = steps.map((s, i) => {
+    const isLast = i === steps.length - 1;
+    let math = '';
+    if (s.order === 0) {
+      math = `Term 0 → ${s.symbol} = ${fmt(s.delta_val, 6)}`;
+    } else {
+      const k = s.order;
+      const parts = Array.from({length: k}, (_, j) => {
+        const shift = j === 0 ? '' : `${j > 0 ? '−' : '+'}${j}`;
+        return j === 0 ? `${varLbl}` : `(${varLbl}${isFwd ? '−' : '+'}${j})`;
+      });
+      math = `Coefficient = ${fmt(s.coeff, 8)}\n`
+           + `${s.symbol} = ${fmt(s.delta_val, 6)}\n`
+           + `Term ${k} = ${fmt(s.coeff, 8)} × ${fmt(s.delta_val, 6)} = ${fmt(s.term_val, 8)}`;
+    }
+
+    return `
+    <div class="step-item">
+      <div class="step-num ${isLast ? 'active-num' : ''}">${s.order}</div>
+      <div class="step-body">
+        <div class="step-sym">Order ${s.order} · ${s.symbol}</div>
+        <div class="step-math">${escHtml(math).replace(/\n/g, '<br/>')}</div>
+        <div class="step-sum ${isFwd ? 'fwd-sum' : ''}">
+          Σ = ${fmt(s.cumulative, 8)}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  fbox.className = `final-box ${isFwd ? 'fwd' : 'bwd'}`;
+  fbox.textContent = `y(${d.target_x}) ≈ ${fmt(d.result, 8)}`;
+  show('final-box');
+}
+
+/* ── Delta chips ── */
+function buildDeltaChips(d) {
+  const sup = k => '⁰¹²³⁴⁵⁶⁷⁸⁹'.split('').reduce((s, c, i) =>
+    s.replace(new RegExp(i, 'g'), c), String(k));
+
+  let fwdDelta, bwdNabla;
+  if (d.mode === 'polynomial') {
+    fwdDelta = d.polynomial.delta;
+    bwdNabla = d.polynomial.nabla;
+  } else {
+    fwdDelta = d.mode === 'forward' ? d.calc.delta  : d.fwd_table.map(row => row[0]);
+    bwdNabla = d.mode === 'backward' ? d.calc.nabla : [];
+    if (!bwdNabla.length) {
+      // extract last row from bwd_table
+      const n = d.n;
+      bwdNabla = Array.from({length: n}, (_, k) => d.bwd_table[n - 1][k]);
+    }
+  }
+
+  const buildGrid = (arr, sym, colorClass) =>
+    arr.map((v, k) => `
+    <div class="delta-chip">
+      <div class="sym">${sym}${k > 0 ? sup(k) : ''}${sym === 'Δ' ? 'y₀' : 'yₙ'}</div>
+      <div class="val ${colorClass}">${fmt(v, 8)}</div>
+    </div>`).join('');
+
+  document.getElementById('delta-grid-fwd').innerHTML = buildGrid(fwdDelta, 'Δ', '');
+  document.getElementById('delta-grid-bwd').innerHTML = buildGrid(bwdNabla, '∇', 'teal');
+}
+
+/* ══════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════ */
+function switchTab(panelId, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ══════════════════════════════════════════════════
+   COPY RESULT
+══════════════════════════════════════════════════ */
+function copyResult() {
+  if (_lastResult === null) return;
+  navigator.clipboard.writeText(_lastResult.toString()).then(() => {
+    const t = document.getElementById('copy-toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+function fmt(v, d = 6) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  const s = parseFloat(v.toFixed(d)).toString();
+  return s;
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function show(id) { document.getElementById(id).style.display = ''; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+function showError(msg) {
+  const el = document.getElementById('error-alert');
+  el.innerHTML = '❌ ' + msg;
+  el.classList.add('visible');
+}
+function hideError() {
+  document.getElementById('error-alert').classList.remove('visible');
+}
+function showWarn(msg) {
+  const el = document.getElementById('warn-alert');
+  el.innerHTML = msg;
+  el.classList.add('visible');
+}
+function hideWarn() {
+  document.getElementById('warn-alert').classList.remove('visible');
+}
+
+function setLoading(on) {
+  document.getElementById('spinner').style.display = on ? 'block' : 'none';
+  document.getElementById('calc-text').textContent = on ? 'Calculating…' : '🔢 Calculate';
+  document.getElementById('calc-btn').disabled = on;
+}
+
+/* ── Enter key support ── */
+['x-input','y-input','target-input'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') calculate();
+  });
+});
+</script>
+
+</body>
+</html>
