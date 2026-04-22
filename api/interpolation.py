@@ -231,10 +231,11 @@ def newton_backward_interpolation(sorted_x, sorted_y, target_x, bwd_table) -> di
 
 def generate_polynomial_expression(sorted_x, sorted_y, fwd_table, bwd_table) -> dict:
     """
-    Generates human-readable Newton polynomial P(x) strings
-    for both forward and backward forms.
+    Generates Newton polynomial P(x) in both Forward and Backward forms.
+    Returns the factored form AND the final expanded numerical polynomial.
     Called when no target x is provided.
     """
+    import math as _math
     n     = len(sorted_x)
     x0    = sorted_x[0]
     xn    = sorted_x[-1]
@@ -242,7 +243,8 @@ def generate_polynomial_expression(sorted_x, sorted_y, fwd_table, bwd_table) -> 
     delta = [fwd_table[0][k] for k in range(n)]
     nabla = [bwd_table[n - 1][k] for k in range(n)]
 
-    def build_poly(origin, diffs, direction):
+    def build_factored(origin_label, diffs, sym, var):
+        """Build factored form: P(x) = d0 + d1*(x-x0)/h + ..."""
         terms = []
         for k in range(n):
             dv = diffs[k]
@@ -255,28 +257,102 @@ def generate_polynomial_expression(sorted_x, sorted_y, fwd_table, bwd_table) -> 
                 parts = []
                 for j in range(k):
                     shift = j * h
-                    pt    = origin + shift if direction == "bwd" else origin + shift
-                    node  = (xn - shift) if direction == "bwd" else (x0 + shift)
-                    node_s = _fmt(node)
-                    parts.append(f"(x − {node_s})")
-                denom = math.factorial(k) * (h ** k)
-                num   = " · ".join(parts)
-                coeff = f"{dv_s} · [{num}]" if abs(dv - 1) > 1e-9 else f"[{num}]"
-                terms.append(f"{coeff} / {_fmt(denom)}")
-        return "P(x) = " + "\n        + ".join(terms) if terms else "P(x) = 0"
+                    if sym == "nabla":
+                        node = xn - shift
+                        parts.append(f"({var} - {_fmt(node)})")
+                    else:
+                        node = x0 + shift
+                        parts.append(f"({var} - {_fmt(node)})")
+                denom = _math.factorial(k) * (h ** k)
+                num   = " * ".join(parts)
+                coeff_str = f"{dv_s} * [{num}]" if abs(dv - 1.0) > 1e-9 else f"[{num}]"
+                terms.append(f"{coeff_str} / {_fmt(denom)}")
+        return "P(x) = " + "\n      + ".join(terms) if terms else "P(x) = 0"
 
-    fwd_poly = build_poly(x0, delta, "fwd")
-    bwd_poly = build_poly(xn, nabla, "bwd")
+    def build_final_poly(diffs, sym):
+        """
+        Build final evaluated polynomial with actual numerical coefficients.
+        Expands each binomial coefficient term and collects by power of x.
+        Returns a readable string like:
+        P(x) = a0 + a1*x + a2*x^2 + ...
+        """
+        # Collect polynomial coefficients using Newton basis expansion
+        # We accumulate the polynomial as a list of coefficients [a0, a1, a2, ...]
+        coeffs = [0.0] * n
+
+        if sym == "delta":
+            # Forward: basis is (x-x0)(x-x0-h)...(x-x0-(k-1)h) / (k! * h^k)
+            for k in range(n):
+                dv = diffs[k]
+                if abs(dv) < 1e-12:
+                    continue
+                # Build polynomial (x-x0)(x-x0-h)...(x-x0-(k-1)h)
+                # Start with [1], multiply each (x - node)
+                basis = [1.0]
+                for j in range(k):
+                    node = x0 + j * h
+                    new_basis = [0.0] * (len(basis) + 1)
+                    for i, c in enumerate(basis):
+                        new_basis[i + 1] += c      # x * c
+                        new_basis[i]     -= node * c  # -node * c
+                    basis = new_basis
+                denom = _math.factorial(k) * (h ** k)
+                scale = dv / denom
+                for i, c in enumerate(basis):
+                    if i < n:
+                        coeffs[i] += scale * c
+        else:
+            # Backward: basis is (x-xn)(x-xn+h)...(x-xn+(k-1)h)
+            for k in range(n):
+                dv = diffs[k]
+                if abs(dv) < 1e-12:
+                    continue
+                basis = [1.0]
+                for j in range(k):
+                    node = xn - j * h
+                    new_basis = [0.0] * (len(basis) + 1)
+                    for i, c in enumerate(basis):
+                        new_basis[i + 1] += c
+                        new_basis[i]     -= node * c
+                    basis = new_basis
+                denom = _math.factorial(k) * (h ** k)
+                scale = dv / denom
+                for i, c in enumerate(basis):
+                    if i < n:
+                        coeffs[i] += scale * c
+
+        # Build readable string
+        parts = []
+        for i, c in enumerate(coeffs):
+            if abs(c) < 1e-12:
+                continue
+            c_s = _fmt(round(c, 8))
+            if i == 0:
+                parts.append(c_s)
+            elif i == 1:
+                parts.append(f"({c_s})x")
+            else:
+                parts.append(f"({c_s})x^{i}")
+        return "P(x) = " + " + ".join(parts) if parts else "P(x) = 0"
+
+    fwd_factored = build_factored(x0, delta, "delta", "x")
+    bwd_factored = build_factored(xn, nabla, "nabla", "x")
+    fwd_final    = build_final_poly(delta, "delta")
+    bwd_final    = build_final_poly(nabla, "nabla")
 
     return {
-        "forward_polynomial":  fwd_poly,
-        "backward_polynomial": bwd_poly,
+        "forward_polynomial":  fwd_factored,
+        "backward_polynomial": bwd_factored,
+        "forward_final":       fwd_final,
+        "backward_final":      bwd_final,
         "delta": delta,
         "nabla": nabla,
         "x0": x0, "xn": xn, "h": h,
         "note": (
             "No target x was provided. "
-            "Substitute any x value into P(x) to compute the interpolated result."
+            "Factored form: original Newton formula with actual values substituted. "
+            "Final form: fully expanded polynomial P(x) with numerical coefficients. "
+            "Substitute any x value to compute the interpolated result."
         )
     }
 
@@ -285,7 +361,7 @@ def generate_polynomial_expression(sorted_x, sorted_y, fwd_table, bwd_table) -> 
 # MASTER ORCHESTRATOR
 # ─────────────────────────────────────────────────────────────
 
-def interpolate(x_values: list, y_values: list, target_x: Optional[float] = None) -> dict:
+def interpolate(x_values: list, y_values: list, target_x=None) -> dict:
     """
     Master function called by the API.
     Validates → sorts → builds tables → selects method → computes result.
@@ -300,14 +376,14 @@ def interpolate(x_values: list, y_values: list, target_x: Optional[float] = None
     bwd_table = build_backward_difference_table(sorted_y)
 
     base = {
-        "n":         n,
-        "h":         h,
-        "sorted_x":  sorted_x,
-        "sorted_y":  sorted_y,
-        "fwd_table": _ser(fwd_table, n),
-        "bwd_table": _ser(bwd_table, n),
+        "n":          n,
+        "h":          h,
+        "sorted_x":   sorted_x,
+        "sorted_y":   sorted_y,
+        "fwd_table":  _ser(fwd_table, n, "forward"),
+        "bwd_table":  _ser(bwd_table, n, "backward"),
         "has_target": target_x is not None,
-        "target_x":  target_x,
+        "target_x":   target_x,
     }
 
     if target_x is None:
@@ -349,12 +425,18 @@ def _sym_bwd(k: int) -> str:
     return "yₙ" if k == 0 else f"∇{str(k).translate(sup)}yₙ"
 
 
-def _ser(table, n):
+def _ser(table, n, direction='forward'):
+    """
+    Serialize difference table to JSON-safe list.
+    Forward  table: None when i + j >= n
+    Backward table: None when j > i
+    """
     out = []
     for i in range(n):
         row = []
         for j in range(n):
-            row.append(None if i + j >= n else round(table[i][j], 10))
+            is_none = (i + j >= n) if direction == 'forward' else (j > i)
+            row.append(None if is_none else round(table[i][j], 10))
         out.append(row)
     return out
 
