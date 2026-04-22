@@ -310,10 +310,14 @@ y(x) = yₙ + s·∇yₙ
       <div class="card">
         <div class="card-header"><div class="card-icon purple">P</div><span class="card-title">Newton Polynomial P(x)</span></div>
         <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.75rem">No target x provided. Both polynomial forms shown below.</div>
-        <div style="font-size:0.75rem;font-weight:700;color:var(--primary);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.4rem">Forward Form (Δ)</div>
+        <div style="font-size:0.75rem;font-weight:700;color:var(--primary);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.3rem">Forward Form — Factored (Δ)</div>
         <div class="poly-box" id="fwd-poly-box"></div>
-        <div style="font-size:0.75rem;font-weight:700;color:var(--teal);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.4rem;margin-top:0.75rem">Backward Form (∇)</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#10B981;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.3rem;margin-top:0.6rem">Forward Form — Final Expanded Polynomial</div>
+        <div class="poly-box" id="fwd-poly-final" style="border-color:rgba(16,185,129,0.4);color:#6EE7B7"></div>
+        <div style="font-size:0.75rem;font-weight:700;color:var(--teal);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.3rem;margin-top:0.6rem">Backward Form — Factored (∇)</div>
         <div class="poly-box" id="bwd-poly-box" style="border-color:rgba(20,184,166,0.3);color:#5EEAD4"></div>
+        <div style="font-size:0.75rem;font-weight:700;color:#A855F7;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.3rem;margin-top:0.6rem">Backward Form — Final Expanded Polynomial</div>
+        <div class="poly-box" id="bwd-poly-final" style="border-color:rgba(168,85,247,0.4);color:#C4B5FD"></div>
         <div class="poly-note" id="poly-note"></div>
       </div>
     </div>
@@ -549,7 +553,9 @@ function renderResult(d){
   if(d.mode==='polynomial'){
     hide('result-hero');show('poly-hero');
     document.getElementById('fwd-poly-box').textContent=d.polynomial.forward_polynomial;
+    document.getElementById('fwd-poly-final').textContent=d.polynomial.forward_final||'';
     document.getElementById('bwd-poly-box').textContent=d.polynomial.backward_polynomial;
+    document.getElementById('bwd-poly-final').textContent=d.polynomial.backward_final||'';
     document.getElementById('poly-note').textContent=d.polynomial.note;
   }else{
     hide('poly-hero');
